@@ -6,19 +6,30 @@ const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
 export async function POST(request) {
   try {
-    const { prompt } = await request.json();
+    const { messages } = await request.json();
 
-    if (!prompt) {
+    if (!messages || messages.length === 0) {
       return NextResponse.json(
-        { error: 'Prompt is required' },
+        { error: 'Messages are required' },
         { status: 400 }
       );
     }
 
-    //Gemini 2.5 Flash 500 req a day limit
+    // Check for API key
+    if (!process.env.GEMINI_API_KEY) {
+      console.error('Missing GEMINI_API_KEY in .env.local');
+      return NextResponse.json(
+        { error: 'Missing API key. Please add GEMINI_API_KEY to .env.local' },
+        { status: 500 }
+      );
+    }
+
     const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
     
-    const result = await model.generateContent(prompt);
+    // Format conversation for Gemini
+    const lastMessage = messages[messages.length - 1].content;
+    
+    const result = await model.generateContent(lastMessage);
     const response = result.response.text();
 
     return NextResponse.json({ response });
